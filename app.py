@@ -1,66 +1,79 @@
 import os
+import datetime
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from dotenv import load_dotenv
 from openai import OpenAI
-from datetime import datetime
+
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 
-# Initialize OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Track daily greetings
+# Track greetings per day
 last_greeted_date = None
 
 
 def mama_reply(user_message: str) -> str:
-    global last_greeted_date
-
-    today = datetime.now().date()
-    disrespectful = False
-
-    # Check if user greeted Mama today
-    if "good morning" in user_message.lower() or "good afternoon" in user_message.lower() or "good evening" in user_message.lower():
-        last_greeted_date = today
-    else:
-        if last_greeted_date != today:
-            disrespectful = True
-
-    # Mama’s personality
-    system_prompt = """
-    You are Mama, an elder Nigerian mother powered by T.A.M AI. 
-    You always reply in a caring but strict Nigerian tone, full of proverbs, wisdom, and motherly advice.
     """
+    Mama's reply engine:
+    - If no greeting for the day → Mama vex first.
+    - Otherwise → sarcastic + witty + African mother energy.
+    """
+    global last_greeted_date
+    today = datetime.date.today()
+    greeted_today = (last_greeted_date == today)
 
-    if disrespectful:
-        system_prompt += (
-            "\nThe user has not greeted you today. Scold them about being disrespectful "
-            "and remind them that greeting elders is important before giving any advice."
+    greetings = ["hi", "hello", "good morning", "good afternoon", "good evening"]
+
+    # First check greeting
+    if not greeted_today and any(word in user_message.lower() for word in greetings):
+        last_greeted_date = today
+        return "Ah, now you sabi greet. Na so e suppose be. At least you still get small home training."
+
+    if not greeted_today:
+        return (
+            "So you just waka enter without greeting your mama? "
+            "No be juju be that? Abeg, start again with correct greeting."
         )
 
+    # Mama's sarcasm via GPT
+    prompt = f"""
+You are The African Mother AI (T.A.M AI).
+Your voice = sarcastic, witty, full of African mother sass + Pidgin English.
+Reply short (2–3 sentences max). 
+Mix Nigerian Pidgin + African mother energy. 
+User: "{user_message}"
+Mama:
+"""
+
     response = client.chat.completions.create(
-        model="gpt-4o-mini",  # fast and cheap; can switch to gpt-4o
+        model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": system_prompt.strip()},
-            {"role": "user", "content": user_message},
+            {
+                "role": "system",
+                "content": "You are T.A.M AI, The African Mother AI. Always sarcastic, sassy, and motherly. Speak in Nigerian Pidgin mixed with African mum tone.",
+            },
+            {"role": "user", "content": prompt},
         ],
+        max_tokens=120,
         temperature=0.9,
     )
 
-    return response.choices[0].message.content
+    return response.choices[0].message.content.strip()
 
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    try:
-        data = request.get_json()
-        user_message = data.get("message", "")
-        reply = mama_reply(user_message)
-        return jsonify({"reply": reply})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    data = request.get_json()
+    user_message = data.get("message", "")
+
+    reply = mama_reply(user_message)
+    return jsonify({"reply": reply})
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    app.run(host="0.0.0.0", port=5000, debug=True)
