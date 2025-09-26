@@ -14,10 +14,6 @@ CORS(app)
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# Load proverbs from file
-with open(os.path.join(os.path.dirname(__file__), "../data/proverbs.txt"), "r", encoding="utf-8") as f:
-    proverbs = [line.strip() for line in f if line.strip()]
-
 # Track greetings per day
 last_greeted_date = None
 
@@ -54,11 +50,6 @@ Reply in Nigerian Pidgin English mixed with African motherly tone.
     )
 
     return response.choices[0].message["content"].strip()
-
-
-@app.route("/proverb", methods=["GET"])
-def get_proverb():
-    return jsonify({"proverb": random.choice(proverbs)})
 
 
 @app.route("/chat", methods=["POST"])
